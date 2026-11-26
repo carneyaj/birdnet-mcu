@@ -1,0 +1,11 @@
+.section .rodata.birdnet_model,"a",@progbits
+.balign 16
+.global _binary_classifier_tflite_start, _binary_classifier_tflite_end
+_binary_classifier_tflite_start:
+.incbin "@MODEL_FILE@"
+_binary_classifier_tflite_end:
+
+.global _binary_field_labels_start, _binary_field_labels_end
+_binary_field_labels_start:
+.incbin "@LABELS_FILE@"
+_binary_field_labels_end:

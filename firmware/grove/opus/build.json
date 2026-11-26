@@ -1,0 +1,28 @@
+{
+  "compiler": "arm-none-eabi-gcc (Arm GNU Toolchain 15.2.Rel1 (Build arm-15.86)) 15.2.1 20251203",
+  "library_sha256": "8ee2b243c38aa40f58e26872d4be140b204b788920dc2c045217d0e4533561eb",
+  "options": {
+    "BUILD_SHARED_LIBS": "OFF",
+    "CMAKE_BUILD_TYPE": "MinSizeRel",
+    "CMAKE_C_COMPILER": "arm-none-eabi-gcc",
+    "CMAKE_C_FLAGS": "-mcpu=cortex-m55 -mthumb -mfloat-abi=hard -ffunction-sections -fdata-sections -fstack-usage",
+    "CMAKE_SYSTEM_NAME": "Generic",
+    "CMAKE_SYSTEM_PROCESSOR": "arm",
+    "CMAKE_TRY_COMPILE_TARGET_TYPE": "STATIC_LIBRARY",
+    "OPUS_BUILD_PROGRAMS": "OFF",
+    "OPUS_BUILD_TESTING": "OFF",
+    "OPUS_DISABLE_INTRINSICS": "ON",
+    "OPUS_DNN_FLOAT_DEBUG": "OFF",
+    "OPUS_DRED": "OFF",
+    "OPUS_ENABLE_FLOAT_API": "ON",
+    "OPUS_FIXED_POINT": "OFF",
+    "OPUS_FLOAT_APPROX": "OFF",
+    "OPUS_FORTIFY_SOURCE": "OFF",
+    "OPUS_HARDENING": "ON",
+    "OPUS_OSCE": "OFF",
+    "OPUS_STACK_PROTECTOR": "OFF"
+  },
+  "source_sha256": "6ffcb593207be92584df15b32466ed64bbec99109f007c82205f0194572411a1",
+  "url": "https://downloads.xiph.org/releases/opus/opus-1.6.1.tar.gz",
+  "version": "1.6.1"
+}

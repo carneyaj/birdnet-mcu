@@ -1,0 +1,60 @@
+{
+  "calibration_frontend": "firmware",
+  "calibration_padding_allowed": false,
+  "class_offset": 0,
+  "embedding_tensor_name": "StatefulPartitionedCall/model/GLOBAL_AVG_POOL/Mean:0",
+  "fixed_backbone_parameter_count": 6145370,
+  "frontend_assets_sha256": "67f56d869450fd7c64c8569aac7b8e36a5849b1c0c65d6bf3fee6c43da1dadce",
+  "full_classifier_parameter_count": 6685050,
+  "full_main_model_parameter_count": 12830420,
+  "grove_vision_ai_v2_assumptions": {
+    "model_flash_budget_bytes": 14680064,
+    "reserved_firmware_bytes": 2097152,
+    "system_sram_bytes": 2490368,
+    "total_flash_bytes": 16777216
+  },
+  "num_classes": 6522,
+  "original_class_count": 6522,
+  "quantization_method": "range_preserving_qat_experimental",
+  "sample_rate": 48000,
+  "spec_shape": [
+    1,
+    96,
+    511,
+    2
+  ],
+  "spec_tensor_name": "StatefulPartitionedCall/model/BNORM_SPEC_NOQUANT/FusedBatchNormV3:0",
+  "subset_classifier_parameter_count": 6685050,
+  "subset_consistency": {
+    "max_abs_diff": 2.708728790283203,
+    "mean_abs_diff": 0.520160436630249
+  },
+  "subset_model_parameter_count": 12830420,
+  "tflite_quantization_check": {
+    "input_dtype": "int8",
+    "input_quantization": [
+      0.03721357882022858,
+      -110
+    ],
+    "input_shape": [
+      1,
+      96,
+      511,
+      2
+    ],
+    "max_abs_diff": 2.1386842727661133,
+    "mean_abs_diff": 0.42782437801361084,
+    "output_dtype": "int8",
+    "output_quantization": [
+      0.18400804698467255,
+      75
+    ],
+    "output_shape": [
+      1,
+      6522
+    ]
+  },
+  "tflite_size_bytes": 14033512,
+  "vela": null,
+  "window_samples": 144000
+}

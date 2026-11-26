@@ -1,0 +1,279 @@
+--- a/EPII_CM55M_APP_S/app/main.c
++++ b/EPII_CM55M_APP_S/app/main.c
+@@ -251,6 +251,16 @@
+ }
+ #endif
+ 
++#ifdef BIRDNET_WE2
++int app_main(void);
++
++int main(void)
++{
++    board_init();
++    return app_main();
++}
++#endif
++
+ #ifdef EI_STANDALONE_INFERENCING
+ #include "ei_standalone_inferencing.h"
+ 
+--- a/EPII_CM55M_APP_S/interface/driver_interface.c
++++ b/EPII_CM55M_APP_S/interface/driver_interface.c
+@@ -173,7 +173,7 @@
+     return DRIVER_INTERFACE_NO_ERROR;
+ }
+ #endif
+-#ifdef IP_timer
++#if defined(IP_timer) || defined(IP_INST_TIMER0)
+ /**
+  * \brief	set Timer control owner
+  *
+--- a/EPII_CM55M_APP_S/options/rules.mk
++++ b/EPII_CM55M_APP_S/options/rules.mk
+@@ -248,22 +248,12 @@
+ 	$(Q)$(SIZE) $(APPL_FULL_NAME).$(ELF_FILENAME)
+ 	$(Q)$(RM) objs.txt
+ else
+-	$(file >objs.in)
+-	$(foreach O,$(DEVICE_OBJS),$(file >>objs.in,$O))
+-	$(foreach O,$(INTEGRATE_OBJS),$(file >>objs.in,$O))
+-	$(foreach O,$(HWACCAUTOTEST_OBJS),$(file >>objs.in,$O))
+-	$(foreach O,$(BOARD_OBJS),$(file >>objs.in,$O))
+-	$(foreach O,$(SCENARIO_APP_OBJS),$(file >>objs.in,$O))
+-	$(foreach O,$(APPL_OBJS),$(file >>objs.in,$O))
+-	$(foreach O,$(TRUSTZONE_SEC_OBJS),$(file >>objs.in,$O))
+-	$(foreach O,$(NSC_OBJS),$(file >>objs.in,$O))
+-	$(foreach O,$(OS_ALLOBJS),$(file >>objs.in,$O))
+-	$(foreach O,$(OS_HAL_ALLOBJS),$(file >>objs.in,$O))
+-	$(foreach O,$(TFM_OBJS),$(file >>objs.in,$O))
+-	$(foreach O,$(INTERFACE_OBJS),$(file >>objs.in,$O))
+-	$(Q)$(LD) $(LINK_OPT) @objs.in $(LD_START_GROUPLIB) $(HMX_BSP_LIBS) $(INFERENCE_ENGINE_LIB) $(TFM_LIBS) $(CV_LIB) $(AUDIOALGO_LIB) $(EXTRA_LIBS) $(LD_SYSTEMLIBS) $(LD_END_GROUPLIB) -o $@
++	$(Q)$(LD) $(LINK_OPT) \
++		$(DEVICE_OBJS) $(INTEGRATE_OBJS) $(HWACCAUTOTEST_OBJS) $(BOARD_OBJS) \
++		$(SCENARIO_APP_OBJS) $(APPL_OBJS) $(TRUSTZONE_SEC_OBJS) $(NSC_OBJS) \
++		$(OS_ALLOBJS) $(OS_HAL_ALLOBJS) $(TFM_OBJS) $(INTERFACE_OBJS) \
++		$(LD_START_GROUPLIB) $(HMX_BSP_LIBS) $(INFERENCE_ENGINE_LIB) $(TFM_LIBS) $(CV_LIB) $(AUDIOALGO_LIB) $(EXTRA_LIBS) $(LD_SYSTEMLIBS) $(LD_END_GROUPLIB) -o $@
+ 	$(Q)$(SIZE) $(APPL_FULL_NAME).$(ELF_FILENAME)
+-	$(Q)$(RM) objs.in
+ endif
+ ifeq ($(VALID_TOOLCHAIN), arm)
+ 	$(Q)$(OBJCOPY) --elf --output=$(APPL_FULL_NAME).elf $(APPL_FULL_NAME).$(ELF_FILENAME)
+--- a/EPII_CM55M_APP_S/middleware/fatfs/port/mmc_spi/mmc_we2_spi.c
++++ b/EPII_CM55M_APP_S/middleware/fatfs/port/mmc_spi/mmc_we2_spi.c
+@@ -111,11 +111,28 @@
+     Driver_SPI0.PowerControl(ARM_POWER_OFF);
+ }
+ 
+-static void wait_spi_completed(uint32_t data_count)
+-{
+-    while (Driver_SPI0.GetStatus().busy);
+-
+-    while (Driver_SPI0.GetDataCount() < data_count);
++/* BIRDNET_BOUNDED_SPI_V1: fail closed until the next disk initialization. */
++static int birdnet_spi_fault;
++
++static uint64_t birdnet_spi_ticks(void)
++{
++    uint32_t value, loops;
++    SystemGetTick(&value, &loops);
++    return (uint64_t)loops * 0x1000000ull + 0x1000000u - value;
++}
++
++static int wait_spi_completed(uint32_t data_count)
++{
++    const uint64_t start = birdnet_spi_ticks();
++    uint32_t budget = SystemCoreClock; /* Fallback if the tick stops advancing. */
++    while (!birdnet_spi_fault &&
++           (Driver_SPI0.GetStatus().busy || Driver_SPI0.GetDataCount() < data_count)) {
++        if (--budget == 0 || birdnet_spi_ticks() - start >= SystemCoreClock / 4u) {
++            birdnet_spi_fault = 1;
++            Driver_SPI0.Control(ARM_SPI_ABORT_TRANSFER, 0);
++        }
++    }
++    return !birdnet_spi_fault;
+ }
+ 
+ /* Exchange a byte */
+@@ -124,9 +141,10 @@
+ )
+ {
+     BYTE dataout = dat;
+-    BYTE datain;
+-    Driver_SPI0.Transfer(&dataout, &datain, 1);
+-    wait_spi_completed(1);
++    BYTE datain = 0xff;
++    if (birdnet_spi_fault) return 0xff;
++    if (Driver_SPI0.Transfer(&dataout, &datain, 1) != ARM_DRIVER_OK) birdnet_spi_fault = 1;
++    if (!wait_spi_completed(1)) return 0xff;
+     return datain;
+ }
+ 
+@@ -140,15 +158,17 @@
+     uint32_t last_btr = btr - (block_num * 512);
+ 
+     while (block_num) {    
+-        Driver_SPI0.Receive(buff, 512);
+-        wait_spi_completed(512);
++        if (birdnet_spi_fault) return;
++        if (Driver_SPI0.Receive(buff, 512) != ARM_DRIVER_OK) birdnet_spi_fault = 1;
++        if (!wait_spi_completed(512)) return;
+         block_num--;
+         buff += 512;
+     }
+ 
+     if (last_btr) {
+-        Driver_SPI0.Receive(buff, last_btr);
+-        wait_spi_completed(last_btr);
++        if (birdnet_spi_fault) return;
++        if (Driver_SPI0.Receive(buff, last_btr) != ARM_DRIVER_OK) birdnet_spi_fault = 1;
++        if (!wait_spi_completed(last_btr)) return;
+     }
+ }
+ 
+@@ -163,15 +183,17 @@
+     uint32_t last_btx = btx - (block_num * 512);
+ 
+     while (block_num) {    
+-        Driver_SPI0.Send(buff, 512);
+-        wait_spi_completed(512);
++        if (birdnet_spi_fault) return;
++        if (Driver_SPI0.Send(buff, 512) != ARM_DRIVER_OK) birdnet_spi_fault = 1;
++        if (!wait_spi_completed(512)) return;
+         block_num--;
+         buff += 512;
+     }
+ 
+     if (last_btx) {
+-        Driver_SPI0.Send(buff, last_btx);
+-        wait_spi_completed(last_btx);
++        if (birdnet_spi_fault) return;
++        if (Driver_SPI0.Send(buff, last_btx) != ARM_DRIVER_OK) birdnet_spi_fault = 1;
++        if (!wait_spi_completed(last_btx)) return;
+     }
+ }
+ #endif
+@@ -468,6 +490,7 @@
+     if (!(Stat & STA_NOINIT))
+         return Stat;
+ 
++    birdnet_spi_fault = 0;
+     BYTE n, cmd, ty, ocr[4];
+     int ret;
+ 
+@@ -578,7 +601,7 @@
+     CardType = ty;    /* Card type */
+     deselect();
+ 
+-    if (ty) {            /* OK */
++    if (ty && !birdnet_spi_fault) {            /* OK */
+         TRACE_PRINTF("SPI_CLOCK_FAST\r\n");
+         /* Set fast clock for generic read/write */
+         ret = Driver_SPI0.Control(ARM_SPI_SET_BUS_SPEED, SPI_CLOCK_FAST);
+@@ -642,7 +665,7 @@
+     }
+ 
+     deselect();
+-    return count ? RES_ERROR : RES_OK;    /* Return result */
++    return (count || birdnet_spi_fault) ? RES_ERROR : RES_OK;    /* Return result */
+ }
+ 
+ /*-----------------------------------------------------------------------*/
+@@ -695,7 +718,7 @@
+     }
+ 
+     deselect();
+-    return count ? RES_ERROR : RES_OK;    /* Return result */
++    return (count || birdnet_spi_fault) ? RES_ERROR : RES_OK;    /* Return result */
+ }
+ #endif
+ 
+@@ -840,10 +863,10 @@
+         break;
+ #if defined(CTRL_POWER_OFF)
+     case CTRL_POWER_OFF :    /* Power off */
++        deselect();
+         power_off();
+         Stat |= STA_NOINIT;
+-        res = RES_OK;
+-        break;
++        return RES_OK;
+ #endif
+ #if _USE_ISDIO
+     case ISDIO_READ:
+@@ -911,7 +934,7 @@
+ 
+     deselect();
+ 
+-    return res;
++    return birdnet_spi_fault ? RES_ERROR : res;
+ }
+ 
+ /*-----------------------------------------------------------------------*/
+--- a/EPII_CM55M_APP_S/library/inference/tflmtag2209_u55tag2205/tensorflow/lite/micro/kernels/ethos_u/ethosu.cc
++++ b/EPII_CM55M_APP_S/library/inference/tflmtag2209_u55tag2205/tensorflow/lite/micro/kernels/ethos_u/ethosu.cc
+@@ -20,6 +20,7 @@
+ #include "tensorflow/lite/micro/kernels/kernel_util.h"
+ #include "tensorflow/lite/micro/micro_context.h"
+ #include "tensorflow/lite/micro/micro_log.h"
++extern "C" int xprintf(const char* fmt, ...);
+ 
+ namespace tflite {
+ namespace {
+@@ -148,13 +149,37 @@
+   // the input and output tensors outside of the TFLM arena.
+   num_tensors = std::min(num_tensors, 8);
+ 
++  static bool s_logged_once = false;
++  if (!s_logged_once) {
++    xprintf("ethosu_eval: cms=%p cms_size=%d inputs=%d outputs=%d base_tensors=%d\r\n",
++            cms_data,
++            data->cms_data_size,
++            node->inputs->size,
++            node->outputs->size,
++            num_tensors);
++    for (int j = 0; j < num_tensors; ++j) {
++      xprintf("ethosu_eval: base[%d]=0x%08x size=%u\r\n",
++              j,
++              (unsigned int)base_addrs[j],
++              (unsigned int)base_addrs_size[j]);
++    }
++    s_logged_once = true;
++  }
++
+   struct ethosu_driver* drv = ethosu_reserve_driver();
+   result = ethosu_invoke_v3(drv, cms_data, data->cms_data_size, base_addrs,
+                             base_addrs_size, num_tensors,
+                             GetMicroContext(context)->external_context());
+   ethosu_release_driver(drv);
+ 
+-  if (-1 == result) {
++  if (result != 0) {
++    xprintf("ethosu_invoke_v3 failed: result=%d cms=%d inputs=%d outputs=%d base_tensors=%d\r\n",
++            result, data->cms_data_size, node->inputs->size, node->outputs->size, num_tensors);
++    MicroPrintf(
++        "ethosu_invoke_v3 failed: result=%d cms=%d inputs=%d outputs=%d "
++        "base_tensors=%d\n",
++        result, data->cms_data_size, node->inputs->size, node->outputs->size,
++        num_tensors);
+     return kTfLiteError;
+   } else {
+     return kTfLiteOk;
+--- a/EPII_CM55M_APP_S/library/inference/tflmtag2209_u55tag2205/tensorflow/lite/micro/micro_graph.cc
++++ b/EPII_CM55M_APP_S/library/inference/tflmtag2209_u55tag2205/tensorflow/lite/micro/micro_graph.cc
+@@ -23,6 +23,7 @@
+ #include "tensorflow/lite/micro/micro_log.h"
+ #include "tensorflow/lite/micro/micro_profiler.h"
+ #include "tensorflow/lite/schema/schema_generated.h"
++extern "C" int xprintf(const char* fmt, ...);
+ 
+ namespace tflite {
+ namespace {
+@@ -178,6 +179,8 @@
+     allocator_->ResetTempAllocations();
+ 
+     if (invoke_status == kTfLiteError) {
++      xprintf("micro_graph invoke fail: node=%d op=%s status=%d\r\n", static_cast<int>(i),
++              OpNameFromRegistration(registration), static_cast<int>(invoke_status));
+       MicroPrintf("Node %s (number %d) failed to invoke with status %d",
+                   OpNameFromRegistration(registration), i, invoke_status);
+       return kTfLiteError;

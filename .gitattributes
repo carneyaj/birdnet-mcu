@@ -1,0 +1,9 @@
+*.tflite binary
+*.bin binary
+*.img binary
+*.a binary
+*.gz binary
+# Patch context includes upstream CRLF lines.
+firmware/grove/sdk.patch -text -whitespace
+# Preserve upstream dependency source formatting and checkout line endings.
+firmware/esp32/components/** -whitespace

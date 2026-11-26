@@ -1,0 +1,6 @@
+f3588e2334891323e467eaa7350504ad133c00b530b2c00ac2d4cc67d044de14  worldwide-v2/model_int8.tflite
+3773334c2ad218bde0ac083dd0b6e839a5cf34e84a6017830b9f446fbb57a215  worldwide-v2/labels.txt
+0de761c9992fce61cb179299ff26fe9dcb0ef849bbf168988b1107aca1b2fc2f  western-us-v2/model_int8.tflite
+28a4b725c3203e97e6c2cf29d49a345c2694ee5334d8caeecf588f8623d294a8  western-us-v2/labels.txt
+59410a74d6bc2be8d488224a8f93b6f1e8c00e350588df75914a54acb7cd8b3c  western-us-v2/grove-ethosu.tflite
+bfa89f1a2bfe9e9963cdade6ac3ccd08bb1f48c09e173053cb82ab05d41b1044  western-us-v2/esp32-packed.tflite

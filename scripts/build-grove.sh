@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SDK="$ROOT/.deps/grove-sdk"
+name=grove
+diagnostics=0
+if [[ "${1:-}" == "--diagnostics" ]]; then
+    diagnostics=1
+    name=grove-diagnostics
+    shift
+fi
+if [[ "$#" != 0 ]]; then
+    echo "Usage: $0 [--diagnostics]" >&2
+    exit 2
+fi
+if [[ ! -d "$SDK/.git" ]]; then
+    echo "Run scripts/install-build-deps.sh grove first." >&2
+    exit 1
+fi
+if [[ "$(git -C "$SDK" rev-parse HEAD)" != 933810ccd5deb1adf2ae8005a8dfca78fc0cb63a ]]; then
+    echo "Grove SDK revision differs from the pinned dependency." >&2
+    exit 1
+fi
+if [[ "$ROOT" =~ [[:space:]] ]]; then
+    echo "The Himax makefiles require a checkout path without whitespace." >&2
+    exit 1
+fi
+if [[ -n "${ARM_GNU_BIN:-}" ]]; then
+    export PATH="$ARM_GNU_BIN:$PATH"
+elif [[ -d /Applications/ArmGNUToolchain/15.2.rel1/arm-none-eabi/bin ]]; then
+    export PATH="/Applications/ArmGNUToolchain/15.2.rel1/arm-none-eabi/bin:$PATH"
+fi
+if ! arm-none-eabi-gcc --version | grep -q '15\.2'; then
+    echo "Use Arm GNU Toolchain 15.2.Rel1, or set ARM_GNU_BIN to its bin directory." >&2
+    exit 1
+fi
+
+out="$ROOT/build/$name"
+src="$ROOT/firmware/grove"
+app_dir="$SDK/EPII_CM55M_APP_S"
+app="$app_dir/app/scenario_app/birdnet_we2"
+capture="$app_dir/app/scenario_app/birdnet_cm55s_fixed_audio"
+gen="$SDK/we2_image_gen_local"
+mkdir -p "$out/main" "$out/capture" "$app" "$capture"
+# The two cores and image generator share the vendor checkout.
+lock="$ROOT/.deps/grove-build.lock"
+mkdir "$lock" || { echo "A Grove build already holds $lock." >&2; exit 1; }
+trap 'rmdir "$lock"' EXIT
+if ! git -C "$SDK" apply --reverse --check "$src/sdk.patch" 2>/dev/null; then
+    git -C "$SDK" apply "$src/sdk.patch"
+fi
+rsync -a --delete "$src/app/" "$app/"
+cp "$ROOT"/firmware/common/* "$app"
+mkdir -p "$app/opus"
+cp -R "$src/opus/." "$app/opus/"
+rsync -a --delete "$src/capture/" "$capture/"
+cp "$src/app/birdnet_audio_mailbox.h" "$capture/"
+
+common=(TOOLCHAIN=gnu BOARD=epii_evb BD_VER=10 IC_VER=30 IC_PACKAGE_SEL=WLCSP65
+        TRUSTZONE=y TRUSTZONE_TYPE=security TRUSTZONE_FW_TYPE=1 V=0)
+helper=(APP_TYPE=birdnet_cm55s_fixed_audio APPL=EPII_CM55S EPII_CORE=SMALL OLEVEL=Os
+        "OUT_DIR_ROOT=$out/capture")
+main=(APP_TYPE=birdnet_we2 APPL=EPII_CM55M "FIELD_DIAGNOSTICS=$diagnostics"
+      "OUT_DIR_ROOT=$out/main")
+object_dir=obj_epii_evb_icv30_bdv10/gnu_epii_evb_WLCSP65
+capture_elf="$out/capture/$object_dir/EPII_CM55S_gnu_epii_evb_WLCSP65_s.elf"
+main_elf="$out/main/$object_dir/EPII_CM55M_gnu_epii_evb_WLCSP65_s.elf"
+
+make -C "$app_dir" "${common[@]}" "${helper[@]}" clean
+make -C "$app_dir" "${common[@]}" "${helper[@]}" -j"${MAKE_JOBS:-8}"
+echo "# Field diagnostics: $diagnostics" >> "$app/birdnet_we2.mk"
+python3 "$ROOT/tools/grove_contract.py" prepare "$ROOT/models/western-us-v2" "$app" "$capture_elf" "$out"
+make -C "$app_dir" "${common[@]}" "${main[@]}" clean
+make -C "$app_dir" "${common[@]}" "${main[@]}" -j"${MAKE_JOBS:-8}"
+python3 "$ROOT/tools/check_firmware_layout.py" "$main_elf"
+cp "$main_elf" "$capture_elf" "$gen/input_case3_secboot/"
+(
+    cd "$gen"
+    case "$(uname -s)/$(uname -m)" in
+        Darwin/arm64) exe=./we2_local_image_gen_macOS_arm64 ;;
+        Linux/x86_64) exe=./we2_local_image_gen ;;
+        *) echo "Grove image generator requires Apple silicon macOS or x86-64 Linux." >&2; exit 1 ;;
+    esac
+    "$exe" project_case3_blp_wlcsp.json
+)
+cp "$gen/output_case3_sec_wlcsp/output.img" "$out/output.img"
+python3 "$ROOT/tools/check_opus_link.py" "$main_elf" --image "$out/output.img"
+python3 "$ROOT/tools/grove_contract.py" seal "$out"
+echo "Flash with python flash_grove.py --bundle $out --port PORT"

@@ -1,0 +1,21 @@
+{
+  "checkpoint": "99d3246cb21b9ea004a2be53bdf088b8af9144e1e1d0ed292578923f526a3dbf",
+  "update": 4096,
+  "parent_sha256": "f3588e2334891323e467eaa7350504ad133c00b530b2c00ac2d4cc67d044de14",
+  "sliced_sha256": "0de761c9992fce61cb179299ff26fe9dcb0ef849bbf168988b1107aca1b2fc2f",
+  "vela_sha256": "59410a74d6bc2be8d488224a8f93b6f1e8c00e350588df75914a54acb7cd8b3c",
+  "tensors_with_quantization_verified": 403,
+  "selected_weight_and_bias_rows_exact": 1018,
+  "selected_weight_scale_count": 1018,
+  "selected_bias_scale_count": 1018,
+  "output_quantization": [
+    [
+      0.18400804698467255
+    ],
+    [
+      75
+    ],
+    0
+  ],
+  "vela_io_exact": true
+}

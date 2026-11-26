@@ -1,0 +1,25 @@
+{
+  "model_sha256": "59410a74d6bc2be8d488224a8f93b6f1e8c00e350588df75914a54acb7cd8b3c",
+  "labels_sha256": "28a4b725c3203e97e6c2cf29d49a345c2694ee5334d8caeecf588f8623d294a8",
+  "classes": 1018,
+  "tensors": {
+    "input": {
+      "scale": 0.03721357882022858,
+      "shape": [
+        1,
+        96,
+        511,
+        2
+      ],
+      "zero_point": -110
+    },
+    "output": {
+      "scale": 0.18400804698467255,
+      "shape": [
+        1,
+        1018
+      ],
+      "zero_point": 75
+    }
+  }
+}
