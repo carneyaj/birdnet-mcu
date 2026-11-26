@@ -3,9 +3,9 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
-import re
 
 from label_blob import fnv1a, package
+from species_profile import load_labels, render_profile
 
 
 def digest(data):
@@ -18,14 +18,11 @@ def prepare(models, app, capture_elf, bundle):
     labels_data = (models / "labels.txt").read_bytes()
     if digest(model) != result["model_sha256"] or digest(labels_data) != result["labels_sha256"]:
         raise ValueError("Grove model or ordered labels differ from the packaged contract")
-    labels = labels_data.decode("utf-8").splitlines()
-    label_source = (app / "birdnet_labels.cpp").read_text()
-    body = re.search(r"kLabels\[\d+\]\s*=\s*\{(.*?)\};", label_source, re.S)
-    if not body:
-        raise ValueError("Cannot locate field label array")
-    installed = [json.loads(s) for s in re.findall(r'"(?:[^"\\]|\\.)*"', body[1])]
-    if installed != labels or len(labels) != result["classes"]:
-        raise ValueError("Firmware labels do not match the packed model order")
+    labels = load_labels(labels_data)
+    if len(labels) != result["classes"]:
+        raise ValueError("Ordered labels differ from the model output count")
+    profile = render_profile(labels, result.get("vocal_guard_only", False), "Grove")
+    (app / "birdnet_species_profile.h").write_text(profile)
     payload, flash = package(model, labels)
     result.update(model_bytes=len(model), model_fnv1a=fnv1a(model),
                   flash_labels=flash, capture_sha256=digest(capture_elf.read_bytes()))

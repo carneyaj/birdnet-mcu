@@ -19,7 +19,7 @@
 #include "freertos/queue.h"
 #include "freertos/task.h"
 #include "frontend.h"
-#include "recording_profile.h"
+#include "birdnet_species_profile.h"
 #include "sdmmc_cmd.h"
 
 namespace {
@@ -105,7 +105,7 @@ bool save_clip(const Clip& clip, uint32_t session, uint32_t& sequence) {
     detection.threshold_q1e4 = kDetectionThresholdQ1e4;
     detection.species[0] = clip.species;
     detection.probability[0] = clip.confidence;
-    constexpr auto board_name = kDeployment;
+    constexpr auto board_name = birdnet_species::kDeployment;
     birdnet_opus_codec::Metadata tags{clip.capture_end_ms, sequence, board_name, &detection};
     birdnet_opus_codec::EncodeStats stats{};
     const bool encoded = birdnet_opus_codec::EncodeOggFrom48kRing(

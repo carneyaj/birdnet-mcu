@@ -71,6 +71,39 @@ To flash a local build, run `python flash_grove.py --bundle build/grove --port P
 
 The SDK installer fetches the pinned vendor sources under `.deps/`. Grove applies the included SDK patch in that checkout for the app entry, SD recovery, Cortex-M55 timer ownership, inference support, and host make compatibility. XIAO builders can point `IDF_PATH` and `IDF_TOOLS_PATH` at an existing 5.4.3 install. Use `IDF_PYTHON_ENV_PATH` when that install uses a specific Python environment. The checked-in model assets and frontend tables are sufficient for both firmware builds.
 
+## Build a custom species list
+
+Start with names from the [worldwide V2 catalog](models/worldwide-v2/labels.txt), including species outside the Western US field model. Put one common name, scientific name, or full `Scientific name_Common name` label on each line. When a name matches multiple classes, use the full label. Lines starting with `#` and blank lines are ignored.
+
+For example, save this as `species.txt`:
+
+```text
+Great Horned Owl
+Apteryx mantelli_North Island Brown Kiwi
+Cardinalis cardinalis
+```
+
+With Python 3.12 and the firmware build tools above, generate the model and build the images:
+
+```sh
+python3.12 -m venv .deps/model-tools
+.deps/model-tools/bin/python -m pip install -r requirements-models.txt
+.deps/model-tools/bin/python tools/custom_species.py species.txt --output build/my-species
+./scripts/build-grove.sh --models build/my-species
+./scripts/build-esp32.sh --models build/my-species
+```
+
+Flash the matching custom bundle:
+
+```sh
+python flash_grove.py --bundle build/my-species/grove --port PORT
+python flash_esp32.py --bundle build/my-species/esp32 --port PORT
+```
+
+Generate a fresh output directory for each list. The generator writes the reduced portable model, the ordered `labels.txt`, and `species-selection.json` with the selected labels and source indices. Both compilers use this same output order. To prepare model files for only one device, add `--board grove` or `--board esp32` to the generator command. Firmware build checks enforce each device’s memory and flash limits. Custom Grove models use stock Vela 5.2.0, while the prebuilt Western US model uses its tuned Vela export. [Arm Vela documentation](https://arm-software.github.io/CMSIS-Ethos-U/main/vela/index.html)
+
+The generator copies the selected int8 classifier rows and verifies their scores against the worldwide model on three host inputs. It always includes the Human vocal class for the 0.30 recording veto. If the list omits that class, the firmware keeps it out of normal detections. The bundled prebuilt images continue to provide the Western US selection.
+
 ## Model and relationship to BirdNET
 
 | File | Purpose |
@@ -80,15 +113,15 @@ The SDK installer fetches the pinned vendor sources under `.deps/`. Grove applie
 | [Grove Ethos-U model](models/western-us-v2/grove-ethosu.tflite) | Vela-compiled version for the WE2 NPU. The Grove bundle appends the ordered label table and flashes that payload at `0x200000`. |
 | [XIAO packed model](models/western-us-v2/esp32-packed.tflite) | The regional graph with custom ESP32 operator fusions and flash-packed weights. The firmware links it and the ordered labels into the app image. |
 
-Here **V2** is the project’s quantization-aware BirdNET v2.4 derivative. It retains the BirdNET backbone architecture, two-resolution spectrogram design, nominal 48 kHz mono input, 144,000-sample windows and independent sigmoid-transformed class logits. The desktop v2.4 acoustic model accepts waveform samples and contains the frontend inside its graph. The microcontroller runtime runs that frontend in firmware and passes a signed int8 `[1, 96, 511, 2]` feature tensor to the model. The weights were tuned for int8 with teacher supervision. Both board targets use the same Western US output order and preserve the selected classifier rows and output quantization from the worldwide int8 parent. [Upstream BirdNET model documentation](https://github.com/birdnet-team/BirdNET-Analyzer/blob/main/docs/models.rst) · [Quantization audit](models/western-us-v2/quantization-audit.json)
+Here **V2** is the project’s quantization-aware BirdNET v2.4 derivative. It retains the BirdNET backbone architecture, two-resolution spectrogram design, nominal 48 kHz mono input, 144,000-sample windows and independent sigmoid-transformed class logits. The desktop v2.4 acoustic model accepts waveform samples and contains the frontend inside its graph. The microcontroller runtime runs that frontend in firmware and passes a signed int8 `[1, 96, 511, 2]` feature tensor to the model. The weights were tuned for int8 with teacher supervision. Both prebuilt board targets use the same Western US output order and preserve the selected classifier rows and output quantization from the worldwide int8 parent. [Upstream BirdNET model documentation](https://github.com/birdnet-team/BirdNET-Analyzer/blob/main/docs/models.rst) · [Quantization audit](models/western-us-v2/quantization-audit.json)
 
-The desktop Analyzer also offers file input, overlap, batch processing, and geographic or seasonal filtering. This firmware listens to the local microphone in consecutive three-second nominal windows and uses a fixed regional label set. Training, microphone response, and arithmetic can all change scores relative to upstream BirdNET. A score of 0.25 is the field trigger, and a Human vocal score of at least 0.30 suppresses audio saving. Grove can log multiple above-threshold classes and collects hourly ambient clips. XIAO reports the top live class and records at most the highest-scoring eligible animal per window. Other sound classes can be reported without triggering audio.
+The desktop Analyzer also offers file input, overlap, batch processing, and geographic or seasonal filtering. This firmware listens to the local microphone in consecutive three-second nominal windows and uses the label set built into its installed model. Training, microphone response, and arithmetic can all change scores relative to upstream BirdNET. A score of 0.25 is the field trigger, and a Human vocal score of at least 0.30 suppresses audio saving. Grove can log multiple above-threshold classes and collects hourly ambient clips. XIAO reports the top live class and records at most the highest-scoring eligible animal per window. Other sound classes can be reported without triggering audio.
 
 The V2 adaptation follows BirdNET’s **CC BY-NC-SA 4.0** model license, including the model bytes embedded in the ESP32 image and bundled with the Grove. See [Attribution and licenses](licenses/NOTICE.md) and [model checksums](models/SHA256SUMS).
 
 ## Release verification
 
-The bundled images were rebuilt from these sources and verified on the build host. Grove checks cover linker placement, included Opus code, the embedded firmware identity, the paired model and label payload, and six host tests for capture, field storage and the human-vocal veto. XIAO checks cover the merged flash image, partition fit, embedded model and label bytes, and the application image checksum. The earlier field baselines ran on hardware. These rebuilt images still need a board smoke test before a field rollout.
+The bundled images were rebuilt from these sources and verified on the build host. Grove checks cover linker placement, included Opus code, the embedded firmware identity, the paired model and label payload, and six host tests for capture, field storage and the human-vocal veto. XIAO checks cover the merged flash image, partition fit, embedded model and label bytes, and the application image checksum. The custom build path was also checked on both targets with a list containing North Island Brown Kiwi. The earlier field baselines ran on hardware. These rebuilt images still need a board smoke test before a field rollout.
 
 ## Implementation and streamlining
 

@@ -1,0 +1,4 @@
+ai-edge-litert==2.1.2
+flatbuffers==25.12.19
+numpy==1.26.4
+ethos-u-vela==5.2.0

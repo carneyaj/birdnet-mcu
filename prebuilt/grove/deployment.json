@@ -72,8 +72,8 @@
     "birdnet_heap_wrap.c": "4986c6fc0326f54e1bd74859058bab400d13b9f7ab45aeb6a22583b18d0fe6d8",
     "birdnet_ima_adpcm.cpp": "ef01a8d069bcf898155c73dbc1c06c5c7d929b3cd3bbba47f4298d65be67996b",
     "birdnet_ima_adpcm.h": "26ee8116a8d7e3afceaeaec98c056f49b604306b70dd18a7f293c9a0c40490c3",
-    "birdnet_labels.cpp": "da18f175abe0a5aa7f14ceb50e5ca96f9e6b97b47af52b34938e8d97875aa6ee",
-    "birdnet_labels.h": "ef272a499cf1e3e9f2ac10458d0850f689ed99c2e5fc28c067d067a3691be7dd",
+    "birdnet_labels.cpp": "863bd60736fcac34509ef5610ba41a2bf06129814e119625f733019d02a9f69f",
+    "birdnet_labels.h": "c411a97d98b02e9907f59315d5253e882ed64cc3a08bfe660f4e90c4debfe37e",
     "birdnet_log.cpp": "54006d4fd5e7d9330ec5747f81a89ef6d85c97fe03074fb4f87a3ba29c4dfdec",
     "birdnet_log.h": "34c202d497027e89d0b291fea1c719722281e41cccd8b14be2f717d2067c347e",
     "birdnet_lora.cpp": "27c35a163e6519e0bd83ce2c72ea6e9525e52a417fb69f09e1653f2ef2f55f1c",
@@ -86,14 +86,15 @@
     "birdnet_opus_codec.h": "9be0fa6f4868eb3f4e6ccf42a5543098119f62d846452d6ae578ea5ed64ae00b",
     "birdnet_rice_codec.cpp": "14e0c960a68b2295bd62fb8d51e1b16ba3b33d73efb591f50d79a1f3d36c752b",
     "birdnet_rice_codec.h": "7601da86fde620c221298bd0ee6e21c0bf8360dba28c50680c88f4e6f90fae7e",
+    "birdnet_species_profile.h": "4ceb23b3a89f4b8426c7a16e60bc8ca1f54c4f8598e200c6a35d47bd06cb4f0c",
     "birdnet_storage_policy.h": "d555037a3ffb72c230d6a13fe6ded2a02cf06d5587d907fb219033b0059e8d09",
     "birdnet_streaming_frontend.h": "eec17c0b91b8c42898787071630bc5f58ca4d41b6f2e6aa073ef1a9fce9285e0",
     "birdnet_we2.cpp": "be42667369515126ed323d57a0be4b0cb04179990e1a19ba96b5d06051fb890c",
     "birdnet_we2.ld": "f697dfa22e5a93eea9658218cc7ac8c726be4082669bc9fbb049f4511eeb5fcc",
-    "birdnet_we2.mk": "b5cee45c23e176f2a0cdacd46fd6db372c7ddf38a82f17493657ab7a7780a217",
-    "config.h": "eb6ee687b5a071fcee54ad7bc972af770930b0bc3598c3268c2df9107a04b214",
+    "birdnet_we2.mk": "01c83bc5d962962fbb19b2cd910c189154d3cb5df802a38fbf15546ff41144ba",
+    "config.h": "830234a6752f73ea8849ced0a59436cb35ff6f92328e2e8d893c91a5d78bbb36",
     "ffconf.h": "323ae12df3823b493d0dbcd924c0b5f8c4dda833729030f2eef5d88148c9869a",
-    "inference_pipeline.cpp": "500c2fda5f4568cb909cb3b62a4e69190e20863e82c0ad687156560ff5ec4388",
+    "inference_pipeline.cpp": "a7e67c757ca5ff98cfb4454174b53663a7775b7fb155684f30f6b589a62b4fc2",
     "inference_pipeline.h": "4e886176a7607e55f851353aabea00fdc13debf12e9c9e5ed53b058c2f0ff0e8",
     "kiss_fft.h": "0cca4723407fc7eeb8c8b51ea0b5c063afb5195b10287cd34f2608319d5bde9c",
     "opus/COPYING": "01e1167d54a096d123cf6dfbbeb19587278845c6481d2d66d545669846079551",
@@ -107,6 +108,6 @@
     "opus/include/opus_types.h": "19cb301ea1eedbcbdbb5049363de061893bf11c20e505a657b69ce6ffa5b11fa",
     "opus/libopus.a": "8ee2b243c38aa40f58e26872d4be140b204b788920dc2c045217d0e4533561eb"
   },
-  "id": "8ed7d86330d6700eed8f503f72beb38cb07c6729ce947dcf4646090b1228718c",
-  "image_sha256": "ddf6ad45d72b7101826dcff0f5b1981070d4dad2e3b2218b76e089ea3bcbf7d8"
+  "id": "029dedc581bb846e95e78c835879741cb9e4380d4607ef1151edcae4d75bcad3",
+  "image_sha256": "facb1cb71c350c1e6dc45a0d01d009ef34cc0b3bd22a250db9c7d8ccea164cfe"
 }

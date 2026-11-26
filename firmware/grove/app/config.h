@@ -1,4 +1,6 @@
 #pragma once
+
+#include "birdnet_species_profile.h"
 #include "birdnet_field_policy.h"
 
 #include <cstdint>
@@ -71,18 +73,6 @@ namespace cfg {
 
 #ifndef BIRDNET_ENABLE_DETECTION_OLED
 #define BIRDNET_ENABLE_DETECTION_OLED 1
-#endif
-
-#ifndef BIRDNET_ENABLE_EXTENDED_CLASSES_673
-#define BIRDNET_ENABLE_EXTENDED_CLASSES_673 0
-#endif
-
-#ifndef BIRDNET_NUM_CLASSES
-#if (BIRDNET_ENABLE_EXTENDED_CLASSES_673 != 0)
-#define BIRDNET_NUM_CLASSES 673
-#else
-#define BIRDNET_NUM_CLASSES 256
-#endif
 #endif
 
 #ifndef BIRDNET_ENABLE_LORA_DETECTION_TX
@@ -501,8 +491,7 @@ constexpr int kSpecFrames = 511;
 constexpr int kSpecChannels = 2;
 constexpr int kInputElems = kSpecMels * kSpecFrames * kSpecChannels;
 
-constexpr bool kEnableExtendedClasses673 = (BIRDNET_ENABLE_EXTENDED_CLASSES_673 != 0);
-constexpr int kNumClasses = BIRDNET_NUM_CLASSES;
+constexpr int kNumClasses = birdnet_species::kCount;
 constexpr int kTopK = 5;
 // Keep LED/OLED activation aligned with SD detection logging by default.
 constexpr float kDetectThreshold = kSdLogThreshold;

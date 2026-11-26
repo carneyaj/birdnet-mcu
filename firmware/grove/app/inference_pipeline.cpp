@@ -821,6 +821,7 @@ static bool DecodeScores(const TfLiteTensor* tensor, int classes, const uint64_t
         birdnet_labels::IsHumanVocal(i)) {
       out->human_vocal_detected = true;
     }
+    if (!birdnet_species::Visible(i)) continue;
     InsertTopK(i, score, out);
     if constexpr (cfg::kEnableSdDetectionLogging) {
       // Filter before the 16-record limit so suppressed high-scoring species

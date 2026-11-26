@@ -20,7 +20,7 @@
 #include "oled.h"
 #include "recorder.h"
 #include "diagnostics/timing.h"
-#include "recording_profile.h"
+#include "birdnet_species_profile.h"
 #include "swish.h"
 #include "stem_pool.h"
 
@@ -32,7 +32,7 @@ extern const uint8_t model_end[] asm("_binary_classifier_tflite_end");
 
 namespace {
 constexpr char kTag[] = "birdnet";
-constexpr int kLocalCount = 1018;
+constexpr int kLocalCount = birdnet_species::kCount;
 constexpr size_t kArena = 2 * 1024 * 1024;
 struct Prediction { int index; float probability; char label[160]; };
 struct Window { int16_t* pcm; uint32_t number; int64_t ready_us; };
@@ -97,7 +97,14 @@ float probability(const TfLiteTensor* scores, int index) {
 
 int winning_index(const TfLiteTensor* scores) {
     const int8_t* data = scores->data.int8;
-    return std::max_element(data, data + kLocalCount) - data;
+    if constexpr (!birdnet_species::kVocalGuardOnly) {
+        return std::max_element(data, data + kLocalCount) - data;
+    }
+    int best = birdnet_species::kHumanVocal == 0 ? 1 : 0;
+    for (int i = best + 1; i < kLocalCount; ++i) {
+        if (birdnet_species::Visible(i) && data[i] > data[best]) best = i;
+    }
+    return best;
 }
 
 Prediction local_prediction(const TfLiteTensor* scores, int index) {
@@ -117,14 +124,12 @@ Prediction local_prediction(const TfLiteTensor* scores, int index) {
 
 const char* record_hit(Window& w, const TfLiteTensor* scores, const Prediction& top) {
     if (top.probability < kDetectionThreshold) return "idle";
-    if constexpr (kHumanVocal >= 0) {
-        if (probability(scores, kHumanVocal) >= 0.30f) return "vocal-veto";
-    }
-    if (std::binary_search(kSoundOnly.begin(), kSoundOnly.end(), top.index)) {
+    if (probability(scores, birdnet_species::kHumanVocal) >= 0.30f) return "vocal-veto";
+    if (!birdnet_species::CanTriggerAudio(top.index)) {
         int best = -1;
         for (int i = 0; i < kLocalCount; ++i) {
             if ((best < 0 || scores->data.int8[i] > scores->data.int8[best]) &&
-                !std::binary_search(kSoundOnly.begin(), kSoundOnly.end(), i)) best = i;
+                birdnet_species::CanTriggerAudio(i)) best = i;
         }
         if (best < 0 || probability(scores, best) < kDetectionThreshold) return "sound-only";
         const auto animal = local_prediction(scores, best);
